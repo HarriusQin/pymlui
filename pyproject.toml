@@ -1,0 +1,21 @@
+[project]
+name = "pymlui"
+version = "0.1.0"
+description = "ML UI - A machine learning GUI application with multiple UI backends"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "scikit-learn",
+    "shap",
+]
+
+[project.optional-dependencies]
+qt = ["PyQt6"]
+web-flask = ["flask", "werkzeug"]
+web-streamlit = ["streamlit"]
+all = ["PyQt6", "flask", "werkzeug", "streamlit"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["core", "gui"]

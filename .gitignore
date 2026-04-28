@@ -1,0 +1,52 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# PyInstaller
+*.spec
+*.manifest
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+htmlcov/
+.coverage
+.pytest_cache/
+
+# Lock files (optional - some projects commit these)
+# uv.lock
+# package-lock.json
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.env.local
