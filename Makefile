@@ -1,13 +1,10 @@
-.PHONY: install install-all install-tkinter install-qt install-web-flask install-web-streamlit build-tkinter build-qt build-web-flask build-streamlit clean test
+.PHONY: install install-all install-qt install-web-flask install-web-streamlit build-qt build-web-flask build-streamlit clean test
 
 install:
 	uv pip install -e .
 
 install-all:
 	uv pip install -e ".[all]"
-
-install-tkinter:
-	uv pip install -e .
 
 install-qt:
 	uv pip install -e ".[qt]"
@@ -18,11 +15,9 @@ install-web-flask:
 install-web-streamlit:
 	uv pip install -e ".[web-streamlit]"
 
-build-tkinter:
-	pyinstaller mlui.spec --clean
-
 build-qt:
-	pyinstaller qt.spec --clean
+	rm -rf dist/pymlui-qt
+	uv run pyinstaller qt.spec --clean
 
 build-web-flask:
 	@echo "Flask app can be run directly with: flask --app gui.flask_app run"
@@ -38,9 +33,9 @@ clean:
 
 test:
 	uv run python -c "from core import train_model_with_config; print('Core imports OK')"
-	uv run python -c "from gui.tkinter_app import main; print('Tkinter app imports OK')"
+	uv run python -c "from gui.qt_app import main; print('Qt app imports OK')"
 
-run-tkinter:
+run:
 	uv run python mlui.py
 
 run-flask:
@@ -48,6 +43,3 @@ run-flask:
 
 run-streamlit:
 	uv run streamlit run gui/streamlit_app.py
-
-run-qt:
-	uv run python -m gui.qt_app
