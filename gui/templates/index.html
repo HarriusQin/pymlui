@@ -227,7 +227,7 @@
 
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
-            formData.append('feature_cols', featureCols);
+            featureCols.forEach(col => formData.append('feature_cols', col));
             formData.append('y_col', yCol);
             formData.append('model_name', document.getElementById('modelSelect').value);
             formData.append('problem_type', document.getElementById('problemType').value);
