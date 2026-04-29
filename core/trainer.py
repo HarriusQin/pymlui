@@ -93,10 +93,11 @@ def train_model_with_config(data, feature_config, model_config, param_grid=None)
         if feature_config['use_pca']:
             try:
                 n_components = feature_config['pca_components']
-                if n_components in ("0", "all"):
+                n_comp_str = str(n_components) if n_components is not None else "0"
+                if n_comp_str in ("0", "all", "All"):
                     n_components = min(X_train_scaled.shape[0], X_train_scaled.shape[1])
                 else:
-                    n_components = min(int(n_components), X_train_scaled.shape[1])
+                    n_components = min(int(float(n_components)), X_train_scaled.shape[1])
 
                 pca_transformer = PCA(n_components=n_components, random_state=42)
                 X_train_scaled = pca_transformer.fit_transform(X_train_scaled)
@@ -255,11 +256,15 @@ def calculate_shap_values(model, X_train, X_test, pca_feature_names,
             shap_values = explainer.shap_values(X_test_sample)
 
         if shap_values is not None:
-            shap_abs = (
-                np.mean([np.abs(sv) for sv in shap_values], axis=0)
-                if isinstance(shap_values, list) else np.abs(shap_values)
-            )
+            if isinstance(shap_values, dict):
+                shap_abs = np.mean([np.abs(v) for v in shap_values.values()], axis=0)
+            elif isinstance(shap_values, list):
+                shap_abs = np.mean([np.abs(sv) for sv in shap_values], axis=0)
+            else:
+                shap_abs = np.abs(shap_values)
             shap_importance = np.mean(shap_abs, axis=0)
+            if shap_importance.ndim > 1:
+                shap_importance = shap_importance.flatten()
 
             results['shap_values'] = shap_values
             results['shap_importance'] = dict(zip(pca_feature_names, shap_importance))

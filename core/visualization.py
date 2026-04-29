@@ -36,7 +36,12 @@ def plot_shap_summary(shap_values, feature_names, title="SHAP Summary"):
 
     try:
         plt.figure(figsize=(12, 8))
-        shap_values_to_plot = shap_values[0] if isinstance(shap_values, list) else shap_values
+        if isinstance(shap_values, dict):
+            shap_values_to_plot = np.mean([v for v in shap_values.values()], axis=0)
+        elif isinstance(shap_values, list):
+            shap_values_to_plot = shap_values[0]
+        else:
+            shap_values_to_plot = shap_values
         shap.summary_plot(
             shap_values_to_plot,
             feature_names=feature_names,
@@ -60,9 +65,9 @@ def plot_shap_bar(shap_importance, title="SHAP Feature Importance"):
 
     try:
         plt.figure(figsize=(10, 6))
-        sorted_items = sorted(shap_importance.items(), key=lambda x: x[1], reverse=True)[:15]
+        sorted_items = sorted(shap_importance.items(), key=lambda x: np.asarray(x[1]).flatten()[-1], reverse=True)[:15]
         features = [item[0] for item in sorted_items]
-        importance = [item[1] for item in sorted_items]
+        importance = [np.asarray(item[1]).flatten()[-1] for item in sorted_items]
 
         colors = plt.cm.viridis(np.linspace(0.3, 0.9, len(features)))
         plt.barh(features, importance, color=colors)
@@ -87,7 +92,12 @@ def plot_shap_dependence(shap_values, feature_names, feature_index=0, data=None,
 
     try:
         plt.figure(figsize=(10, 6))
-        shap_values_to_plot = shap_values[0] if isinstance(shap_values, list) else shap_values
+        if isinstance(shap_values, dict):
+            shap_values_to_plot = np.mean([v for v in shap_values.values()], axis=0)
+        elif isinstance(shap_values, list):
+            shap_values_to_plot = shap_values[0]
+        else:
+            shap_values_to_plot = shap_values
         if feature_index >= len(feature_names):
             feature_index = 0
         feature_name = feature_names[feature_index]

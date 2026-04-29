@@ -239,17 +239,14 @@ class ModelConfigDialog(QDialog):
         problem_frame = QGroupBox("Problem Type")
         problem_layout = QVBoxLayout(problem_frame)
         self.problem_type = "regression"
-        self.regression_rb = QPushButton("Regression")
-        self.regression_rb.setCheckable(True)
-        self.regression_rb.setChecked(True)
-        self.regression_rb.clicked.connect(lambda: self.update_model_options("regression"))
-        self.classification_rb = QPushButton("Classification")
-        self.classification_rb.setCheckable(True)
-        self.classification_rb.clicked.connect(lambda: self.update_model_options("classification"))
-        btn_layout = QHBoxLayout()
-        btn_layout.addWidget(self.regression_rb)
-        btn_layout.addWidget(self.classification_rb)
-        problem_layout.addLayout(btn_layout)
+        problem_type_layout = QHBoxLayout()
+        problem_type_layout.addWidget(QLabel("Problem Type:"))
+        self.problem_type_combo = QComboBox()
+        self.problem_type_combo.addItems(["Regression", "Classification"])
+        self.problem_type_combo.currentIndexChanged.connect(self.on_problem_type_changed)
+        problem_type_layout.addWidget(self.problem_type_combo)
+        problem_type_layout.addStretch()
+        problem_layout.addLayout(problem_type_layout)
         main_layout.addWidget(problem_frame)
 
         model_frame = QGroupBox("Model Selection")
@@ -317,7 +314,7 @@ class ModelConfigDialog(QDialog):
         bottom_layout.addWidget(cancel_btn)
         main_layout.addLayout(bottom_layout)
 
-        self.update_model_options("regression")
+        self.on_problem_type_changed(0)
 
     def on_pca_changed(self, state):
         self.pca_components_input.setEnabled(state == Qt.CheckState.Checked.value)
@@ -325,15 +322,11 @@ class ModelConfigDialog(QDialog):
     def on_param_grid_changed(self, state):
         self.custom_param_btn.setEnabled(state == Qt.CheckState.Unchecked.value)
 
-    def update_model_options(self, problem_type=None):
-        if problem_type == "classification":
+    def on_problem_type_changed(self, index):
+        if index == 1:
             models = CLASSIFICATION_MODELS
-            self.classification_rb.setChecked(True)
-            self.regression_rb.setChecked(False)
         else:
             models = REGRESSION_MODELS
-            self.regression_rb.setChecked(True)
-            self.classification_rb.setChecked(False)
 
         self.model_combo.clear()
         self.model_combo.addItems(models)
@@ -391,18 +384,22 @@ class ModelConfigDialog(QDialog):
             param_text = self.custom_param_text.toPlainText().strip()
             if param_text:
                 self.custom_param_grid = json.loads(param_text)
+                if not isinstance(self.custom_param_grid, dict):
+                    QMessageBox.warning(self, "Warning", "Parameters must be a JSON object (e.g., {\"param\": [1, 2, 3]})")
+                    return
             else:
                 self.custom_param_grid = {}
             dialog.close()
+        except json.JSONDecodeError as e:
+            QMessageBox.warning(self, "Invalid JSON", "The parameter text is not valid JSON. Please check the syntax.")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Invalid JSON format: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Invalid parameter format: {str(e)}")
 
     def load_initial_config(self):
         if 'problem_type' in self.initial_config:
-            self.update_model_options(self.initial_config['problem_type'])
-            if self.initial_config['problem_type'] == 'classification':
-                self.classification_rb.setChecked(True)
-                self.regression_rb.setChecked(False)
+            index = 1 if self.initial_config['problem_type'] == 'classification' else 0
+            self.problem_type_combo.setCurrentIndex(index)
+            self.on_problem_type_changed(index)
         if 'model_name' in self.initial_config:
             self.model_combo.setCurrentText(self.initial_config['model_name'])
         if 'x_scaling' in self.initial_config:
@@ -419,12 +416,28 @@ class ModelConfigDialog(QDialog):
             self.custom_param_grid = self.initial_config['param_grid']
 
     def ok(self):
-        problem_type = "classification" if self.classification_rb.isChecked() else "regression"
+        problem_type = "classification" if self.problem_type_combo.currentIndex() == 1 else "regression"
         model_name = self.model_combo.currentText()
 
         if not model_name:
             QMessageBox.warning(self, "Warning", "Please select a model!")
             return
+
+        if self.use_pca_cb.isChecked():
+            pca_text = self.pca_components_input.text().strip()
+            if pca_text.lower() in ("all", ""):
+                pca_components = "all"
+            else:
+                try:
+                    pca_components = int(float(pca_text))
+                    if pca_components < 0:
+                        QMessageBox.warning(self, "Warning", "PCA components must be non-negative!")
+                        return
+                except ValueError:
+                    QMessageBox.warning(self, "Warning", "Invalid PCA components value. Enter a positive integer or 'all'.")
+                    return
+        else:
+            pca_components = 0
 
         param_grid = {}
         if not self.use_default_grid_cb.isChecked() and self.custom_param_grid:
@@ -439,7 +452,7 @@ class ModelConfigDialog(QDialog):
             'x_scaling': self.x_scaling_combo.currentText(),
             'y_scaling': self.y_scaling_combo.currentText(),
             'use_pca': self.use_pca_cb.isChecked(),
-            'pca_components': self.pca_components_input.text(),
+            'pca_components': pca_components,
             'param_grid': param_grid,
         }
 
@@ -909,12 +922,19 @@ class MLTrainerApp(QMainWindow):
         return widget
 
     def update_status(self):
-        if self.data is None:
+        has_data = self.data is not None
+        has_features = len(self.features_list) > 0
+
+        if not has_data:
             self.status_label.setText("No data loaded")
             self.status_label.setStyleSheet("color: gray;")
         else:
             self.status_label.setText(f"Data: {self.data.shape[0]} rows, {self.data.shape[1]} columns")
             self.status_label.setStyleSheet("color: black;")
+
+        if hasattr(self, 'train_selected_btn'):
+            self.train_selected_btn.setEnabled(has_data and has_features)
+            self.train_all_btn.setEnabled(has_data and has_features)
 
         self.features_listbox.clear()
         for i, feat in enumerate(self.features_list):
@@ -928,9 +948,22 @@ class MLTrainerApp(QMainWindow):
         if path:
             try:
                 self.data = pd.read_csv(path)
+                if self.data.empty:
+                    QMessageBox.warning(self, "Warning", "The CSV file is empty or has no valid data.")
+                    return
+                if len(self.data.columns) < 2:
+                    QMessageBox.warning(self, "Warning", "The CSV file must have at least 2 columns (features + target).")
+                    return
+                if not any(self.data.select_dtypes(include=['number']).columns):
+                    QMessageBox.warning(self, "Warning", "The CSV file must have at least one numeric column for ML training.")
+                    return
                 self.features_list = []
                 self.update_status()
                 QMessageBox.information(self, "Success", f"Data loaded successfully!\nShape: {self.data.shape}")
+            except pd.errors.EmptyDataError:
+                QMessageBox.warning(self, "Warning", "The CSV file is empty or corrupted.")
+            except pd.errors.ParserError as e:
+                QMessageBox.warning(self, "Warning", f"Failed to parse CSV file. Please ensure it's a valid CSV format.\n\nError: {str(e)}")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to load data: {str(e)}")
 
@@ -1107,6 +1140,9 @@ class MLTrainerApp(QMainWindow):
         if current_row < len(self.features_list):
             self.features_list.pop(current_row)
             self.update_status()
+            if self.features_listbox.count() > 0:
+                new_row = min(current_row, self.features_listbox.count() - 1)
+                self.features_listbox.setCurrentRow(new_row)
 
     def clear_feature_configs(self):
         reply = QMessageBox.question(
@@ -1135,6 +1171,16 @@ class MLTrainerApp(QMainWindow):
         self.train_selected_btn.setEnabled(False)
         self.train_all_btn.setEnabled(False)
 
+        if hasattr(self, 'training_thread') and self.training_thread is not None:
+            if self.training_thread.isRunning():
+                self.training_thread.wait()
+            try:
+                self.training_thread.finished.disconnect()
+                self.training_thread.error.disconnect()
+                self.training_thread.progress.disconnect()
+            except (TypeError, RuntimeError):
+                pass
+
         self.training_thread = TrainingThread(
             self.data, feature_config, model_config, model_config['param_grid']
         )
@@ -1156,12 +1202,21 @@ class MLTrainerApp(QMainWindow):
         if reply != QMessageBox.StandardButton.Yes:
             return
 
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+        self.train_selected_btn.setEnabled(False)
+        self.train_all_btn.setEnabled(False)
         self.results_text.clear()
         self.results_text.append("Batch Training Results:\n")
         self.results_text.append("=" * 50 + "\n\n")
 
+        total = len(self.features_list)
         for i, feature_config in enumerate(self.features_list):
+            progress = int((i / total) * 100)
+            self.progress_bar.setValue(progress)
+            self.statusBar().showMessage(f"Training configuration {i+1} of {total}...")
             self.results_text.append(f"Configuration {i+1}: {feature_config['description']}")
+            QApplication.processEvents()
 
             try:
                 model_config = feature_config['model_config']
@@ -1190,7 +1245,13 @@ class MLTrainerApp(QMainWindow):
                 self.results_text.append(f"  Error: {str(e)}\n")
 
             self.results_text.append("\n")
+            QApplication.processEvents()
 
+        self.progress_bar.setVisible(False)
+        self.progress_bar.setValue(0)
+        self.train_selected_btn.setEnabled(True)
+        self.train_all_btn.setEnabled(True)
+        self.statusBar().showMessage("Batch training completed!")
         self.results_text.append("Batch training completed!\n")
 
     def on_training_progress(self, value, message):
@@ -1218,9 +1279,11 @@ class MLTrainerApp(QMainWindow):
 
     def on_training_error(self, error_msg):
         self.progress_bar.setVisible(False)
+        self.progress_bar.setValue(0)
         self.train_selected_btn.setEnabled(True)
         self.train_all_btn.setEnabled(True)
         self.statusBar().showMessage("Training failed")
+        self.results_text.append(f"\nTraining Error: {error_msg}\n")
         QMessageBox.critical(self, "Error", f"Training error: {error_msg}")
 
     def display_results(self, results):
@@ -1286,15 +1349,19 @@ class MLTrainerApp(QMainWindow):
 
         if results.get('shap_importance'):
             self.results_text.append("\nSHAP Feature Importance (Top 10):\n")
-            sorted_shap = sorted(results['shap_importance'].items(), key=lambda x: x[1], reverse=True)
+            sorted_shap = sorted(results['shap_importance'].items(), key=lambda x: np.asarray(x[1]).flatten()[-1], reverse=True)
             for feature, imp in sorted_shap[:10]:
-                self.results_text.append(f"  {feature}: {imp:.4f}\n")
+                imp_val = np.asarray(imp).flatten()
+                imp_display = imp_val[-1] if len(imp_val) > 0 else 0
+                self.results_text.append(f"  {feature}: {imp_display:.4f}\n")
 
             if feature_config['use_pca'] and 'shap_importance_original' in results:
                 self.results_text.append("\nSHAP Importance (Original Features, Top 10):\n")
-                sorted_original = sorted(results['shap_importance_original'].items(), key=lambda x: x[1], reverse=True)
+                sorted_original = sorted(results['shap_importance_original'].items(), key=lambda x: np.asarray(x[1]).flatten()[-1], reverse=True)
                 for feature, imp in sorted_original[:10]:
-                    self.results_text.append(f"  {feature}: {imp:.4f}\n")
+                    imp_val = np.asarray(imp).flatten()
+                    imp_display = imp_val[-1] if len(imp_val) > 0 else 0
+                    self.results_text.append(f"  {feature}: {imp_display:.4f}\n")
 
         if 'feature_importance_error' in results:
             self.results_text.append(f"\nFeature Importance Error: {results['feature_importance_error']}\n")
@@ -1405,7 +1472,11 @@ class MLTrainerApp(QMainWindow):
         dependence_layout.addWidget(QLabel("Select feature:"))
 
         self.dependence_combo = QComboBox()
-        self.dependence_combo.addItems(feature_names if feature_names else [""])
+        if feature_names:
+            self.dependence_combo.addItems(feature_names)
+        else:
+            self.dependence_combo.addItem("(No features)")
+            self.dependence_combo.setEnabled(False)
         dependence_layout.addWidget(self.dependence_combo)
 
         dep_btn = QPushButton("Plot Dependence")
