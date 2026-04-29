@@ -1,6 +1,6 @@
 # PyMLUI - 机器学习训练器（含 SHAP）
 
-一款基于 GUI 的机器学习工具，提供直观的界面用于训练、评估和解释 ML 模型，支持 SHAP 特征重要性分析。
+一款基于 PyQt6 的 GUI 机器学习工具，提供直观的界面用于训练、评估和解释 ML 模型，支持 SHAP 特征重要性分析。
 
 ## 功能特性
 
@@ -27,24 +27,33 @@
 # 创建虚拟环境
 uv venv .venv
 
+# 激活环境（Linux/macOS）
+source .venv/bin/activate
+
 # 激活环境（Windows）
 .venv\Scripts\activate
 
 # 安装依赖
-uv pip install pandas numpy matplotlib scikit-learn shap
+uv pip install -e .
 ```
 
 ## 使用方法
 
 ```bash
+# 使用激活的 venv 运行
 .venv\Scripts\python mlui.py
+
+# 或使用 uv
+uv run python mlui.py
 ```
 
-或使用 uv：
+## 构建可执行文件
 
 ```bash
-uv run --active python mlui.py
+make build-qt
 ```
+
+构建产物位于 `dist/pymlui-qt/`。
 
 ## 工作流程
 
@@ -93,11 +102,17 @@ uv run --active python mlui.py
 
 ```
 pymlui/
-├── mlui.py          # 主程序
+├── mlui.py          # 主程序入口
+├── core/            # 核心 ML 训练逻辑
+│   ├── config.py       # 配置管理
+│   ├── trainer.py      # 模型训练逻辑
+│   └── visualization.py # 可视化工具
+├── gui/             # GUI 模块
+│   └── qt_app.py       # PyQt6 GUI 实现
 ├── pyproject.toml   # 项目配置
-├── README.md        # 英文文档
-├── README-zh.md     # 中文文档
-├── .venv/           # 虚拟环境
+├── qt.spec          # PyInstaller 打包配置
+├── Makefile         # 构建自动化
+└── .venv/           # 虚拟环境
 ```
 
 ## 依赖
@@ -106,7 +121,7 @@ pymlui/
 - matplotlib - 可视化
 - scikit-learn - 机器学习
 - shap - 模型可解释性
-- tkinter - GUI（Python 内置）
+- PyQt6 - GUI 框架
 
 ## SHAP 集成
 

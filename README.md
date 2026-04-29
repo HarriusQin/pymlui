@@ -1,6 +1,6 @@
 # PyMLUI - Machine Learning Trainer with SHAP
 
-A GUI-based machine learning tool that provides an intuitive interface for training, evaluating, and interpreting ML models with SHAP feature importance analysis.
+A GUI-based machine learning tool built with PyQt6 that provides an intuitive interface for training, evaluating, and interpreting ML models with SHAP feature importance analysis.
 
 ## Features
 
@@ -27,24 +27,33 @@ A GUI-based machine learning tool that provides an intuitive interface for train
 # Create virtual environment
 uv venv .venv
 
+# Activate (Linux/macOS)
+source .venv/bin/activate
+
 # Activate (Windows)
 .venv\Scripts\activate
 
 # Install dependencies
-uv pip install pandas numpy matplotlib scikit-learn shap
+uv pip install -e .
 ```
 
 ## Usage
 
 ```bash
+# Run with activated venv
 .venv\Scripts\python mlui.py
+
+# Or with uv
+uv run python mlui.py
 ```
 
-Or with uv:
+## Build Executable
 
 ```bash
-uv run --active python mlui.py
+make build-qt
 ```
+
+The built executable will be in `dist/pymlui-qt/`.
 
 ## Workflow
 
@@ -93,9 +102,17 @@ Click **Save Results** to export training output to a text file.
 
 ```
 pymlui/
-├── mlui.py          # Main application
+├── mlui.py          # Main application entry point
+├── core/            # Core ML training logic
+│   ├── config.py       # Configuration management
+│   ├── trainer.py      # Model training logic
+│   └── visualization.py # Visualization utilities
+├── gui/              # GUI modules
+│   └── qt_app.py       # PyQt6 GUI implementation
 ├── pyproject.toml   # Project configuration
-├── .venv/           # Virtual environment
+├── qt.spec          # PyInstaller spec file
+├── Makefile         # Build automation
+└── .venv/           # Virtual environment
 ```
 
 ## Dependencies
@@ -104,7 +121,7 @@ pymlui/
 - matplotlib - Visualization
 - scikit-learn - Machine learning
 - shap - Model interpretability
-- tkinter - GUI (built-in)
+- PyQt6 - GUI framework
 
 ## SHAP Integration
 

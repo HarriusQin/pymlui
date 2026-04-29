@@ -1,29 +1,17 @@
-.PHONY: install install-all install-qt install-web-flask install-web-streamlit build-qt build-web-flask build-streamlit clean test
+.PHONY: install install-all install-qt build-qt clean test
 
 install:
 	uv pip install -e .
 
 install-all:
-	uv pip install -e ".[all]"
+	uv pip install -e .
 
 install-qt:
-	uv pip install -e ".[qt]"
-
-install-web-flask:
-	uv pip install -e ".[web-flask]"
-
-install-web-streamlit:
-	uv pip install -e ".[web-streamlit]"
+	uv pip install -e .
 
 build-qt:
 	rm -rf dist/pymlui-qt
 	uv run pyinstaller qt.spec --clean
-
-build-web-flask:
-	@echo "Flask app can be run directly with: flask --app gui.flask_app run"
-
-build-streamlit:
-	@echo "Streamlit app can be run directly with: streamlit run gui/streamlit_app.py"
 
 clean:
 	rm -rf build dist *.egg-info
@@ -37,9 +25,3 @@ test:
 
 run:
 	uv run python mlui.py
-
-run-flask:
-	uv run flask --app gui.flask_app run
-
-run-streamlit:
-	uv run streamlit run gui/streamlit_app.py

@@ -1,4 +1,4 @@
-"""PyMLUI GUI modules - Multiple UI backends."""
+"""PyMLUI GUI module - PyQt6 based."""
 
 from .qt_app import main as run_qt
 
